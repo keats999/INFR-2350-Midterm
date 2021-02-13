@@ -27,6 +27,9 @@ uniform float u_TextureMix;
 
 uniform vec3  u_CamPos;
 
+uniform int u_LightingMode;
+uniform float u_Threshold;
+
 out vec4 frag_color;
 
 // https://learnopengl.com/Advanced-Lighting/Advanced-Lighting
@@ -62,10 +65,65 @@ void main() {
 	vec4 textureColor2 = texture(s_Diffuse2, inUV);
 	vec4 textureColor = mix(textureColor1, textureColor2, u_TextureMix);
 
-	vec3 result = (
-		(u_AmbientCol * u_AmbientStrength) + // global ambient light
-		(ambient + diffuse + specular) * attenuation // light factors from our single light
-		) * inColor * textureColor.rgb; // Object color
+	vec3 result = textureColor.rgb;
+	if (u_LightingMode == 1)
+	{
+		// Ambient
+		result = (
+			(u_AmbientCol * u_AmbientStrength) + // global ambient light
+			(ambient) * attenuation // light factors from our single light
+			) * inColor * textureColor.rgb; // Object color
+	}
+	if (u_LightingMode == 2)
+	{
+		// Specular
+		result = (
+			(u_AmbientCol * u_AmbientStrength) + // global ambient light
+			(specular) * attenuation // light factors from our single light
+			) * inColor * textureColor.rgb; // Object color
+	}
+	if (u_LightingMode == 3)
+	{
+		// Ambient + Specular
+		result = (
+			(u_AmbientCol * u_AmbientStrength) + // global ambient light
+			(ambient + specular) * attenuation // light factors from our single light
+			) * inColor * textureColor.rgb; // Object color
+	}
+	if (u_LightingMode == 4)
+	{
+		// Ambient + Diffuse + Specular
+		result = (
+			(u_AmbientCol * u_AmbientStrength) + // global ambient light
+			(ambient + diffuse + specular) * attenuation // light factors from our single light
+			) * inColor * textureColor.rgb; // Object color
+	}
+	if (u_LightingMode == 5)
+	{
+		// Ambient + Specular + Bloom
+		result = (
+			(u_AmbientCol * u_AmbientStrength) + // global ambient light
+			(ambient + specular) * attenuation // light factors from our single light
+			) * inColor * textureColor.rgb; // Object color
+
+		if (length((u_AmbientCol * u_AmbientStrength) + (ambient + specular) * attenuation) > u_Threshold)
+		{
+			result = textureColor.rgb;
+		}
+	}
+	if (u_LightingMode == 6)
+	{
+		// Ambient + Diffuse + Specular + Bloom
+		result = (
+			(u_AmbientCol * u_AmbientStrength) + // global ambient light
+			(ambient + specular) * attenuation // light factors from our single light
+			) * inColor * textureColor.rgb; // Object color
+
+		if (length((u_AmbientCol * u_AmbientStrength) + (ambient + diffuse + specular) * attenuation) > u_Threshold)
+		{
+			result = textureColor.rgb;
+		}
+	}
 
 	frag_color = vec4(result, textureColor.a);
 }

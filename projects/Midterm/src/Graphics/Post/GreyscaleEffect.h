@@ -19,5 +19,5 @@ public:
 	//Setters
 	void SetIntensity(float intensity);
 private:
-	float _intensity = 1.0f;
+	float _intensity = 0.0f;
 };

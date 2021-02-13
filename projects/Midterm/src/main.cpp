@@ -85,108 +85,66 @@ int main() {
 		SepiaEffect* sepiaEffect;
 		GreyscaleEffect* greyscaleEffect;
 		ColorCorrectEffect* colorCorrectEffect;
-		
+		float threshold = 0.0f;
+		int bloom = 0;
 
 		// We'll add some ImGui controls to control our shader
 		BackendHandler::imGuiCallbacks.push_back([&]() {
-			if (ImGui::CollapsingHeader("Effect controls"))
+			if (ImGui::CollapsingHeader("Midterm Controls"))
 			{
-				ImGui::SliderInt("Chosen Effect", &activeEffect, 0, effects.size() - 1);
-
-				if (activeEffect == 0)
+				if (ImGui::Button("No Lighting"))
 				{
-					ImGui::Text("Active Effect: Sepia Effect");
-
-					SepiaEffect* temp = (SepiaEffect*)effects[activeEffect];
-					float intensity = temp->GetIntensity();
-
-					if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 1.0f))
-					{
-						temp->SetIntensity(intensity);
-					}
+					shader->SetUniform("u_LightingMode", 0);
+					bloom = 0;
 				}
-				if (activeEffect == 1)
+				
+				if (ImGui::Button("Ambient Only")) 
 				{
-					ImGui::Text("Active Effect: Greyscale Effect");
-					
-					GreyscaleEffect* temp = (GreyscaleEffect*)effects[activeEffect];
-					float intensity = temp->GetIntensity();
-
-					if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 1.0f))
-					{
-						temp->SetIntensity(intensity);
-					}
+					shader->SetUniform("u_LightingMode", 1);
+					bloom = 0;
 				}
-				if (activeEffect == 2)
+
+				if (ImGui::Button("Specular Only"))
 				{
-					ImGui::Text("Active Effect: Color Correct Effect");
-
-					ColorCorrectEffect* temp = (ColorCorrectEffect*)effects[activeEffect];
-					static char input[BUFSIZ];
-					ImGui::InputText("Lut File to Use", input, BUFSIZ);
-
-					if (ImGui::Button("SetLUT", ImVec2(200.0f, 40.0f)))
-					{
-						temp->SetLUT(LUT3D(std::string(input)));
-					}
+					shader->SetUniform("u_LightingMode", 2);
+					bloom = 0;
 				}
-			}
-			if (ImGui::CollapsingHeader("Environment generation"))
-			{
-				if (ImGui::Button("Regenerate Environment", ImVec2(200.0f, 40.0f)))
+
+				if (ImGui::Button("Ambient + Specular"))
 				{
-					EnvironmentGenerator::RegenerateEnvironment();
+					shader->SetUniform("u_LightingMode", 3);
+					bloom = 0;
 				}
-			}
-			if (ImGui::CollapsingHeader("Scene Level Lighting Settings"))
-			{
-				if (ImGui::ColorPicker3("Ambient Color", glm::value_ptr(ambientCol))) {
-					shader->SetUniform("u_AmbientCol", ambientCol);
-				}
-				if (ImGui::SliderFloat("Fixed Ambient Power", &ambientPow, 0.01f, 1.0f)) {
-					shader->SetUniform("u_AmbientStrength", ambientPow);
-				}
-			}
-			if (ImGui::CollapsingHeader("Light Level Lighting Settings"))
-			{
-				if (ImGui::DragFloat3("Light Pos", glm::value_ptr(lightPos), 0.01f, -10.0f, 10.0f)) {
-					shader->SetUniform("u_LightPos", lightPos);
-				}
-				if (ImGui::ColorPicker3("Light Col", glm::value_ptr(lightCol))) {
-					shader->SetUniform("u_LightCol", lightCol);
-				}
-				if (ImGui::SliderFloat("Light Ambient Power", &lightAmbientPow, 0.0f, 1.0f)) {
-					shader->SetUniform("u_AmbientLightStrength", lightAmbientPow);
-				}
-				if (ImGui::SliderFloat("Light Specular Power", &lightSpecularPow, 0.0f, 1.0f)) {
-					shader->SetUniform("u_SpecularLightStrength", lightSpecularPow);
-				}
-				if (ImGui::DragFloat("Light Linear Falloff", &lightLinearFalloff, 0.01f, 0.0f, 1.0f)) {
-					shader->SetUniform("u_LightAttenuationLinear", lightLinearFalloff);
-				}
-				if (ImGui::DragFloat("Light Quadratic Falloff", &lightQuadraticFalloff, 0.01f, 0.0f, 1.0f)) {
-					shader->SetUniform("u_LightAttenuationQuadratic", lightQuadraticFalloff);
-				}
-			}
 
-			auto name = controllables[selectedVao].get<GameObjectTag>().Name;
-			ImGui::Text(name.c_str());
-			auto behaviour = BehaviourBinding::Get<SimpleMoveBehaviour>(controllables[selectedVao]);
-			ImGui::Checkbox("Relative Rotation", &behaviour->Relative);
+				if (ImGui::Button("Ambient + Diffuse + Specular (not in the midterm outline but I figured it should've been)"))
+				{
+					shader->SetUniform("u_LightingMode", 4);
+					bloom = 0;
+				}
 
-			ImGui::Text("Q/E -> Yaw\nLeft/Right -> Roll\nUp/Down -> Pitch\nY -> Toggle Mode");
-		
-			minFps = FLT_MAX;
-			maxFps = 0;
-			avgFps = 0;
-			for (int ix = 0; ix < 128; ix++) {
-				if (fpsBuffer[ix] < minFps) { minFps = fpsBuffer[ix]; }
-				if (fpsBuffer[ix] > maxFps) { maxFps = fpsBuffer[ix]; }
-				avgFps += fpsBuffer[ix];
+				if (ImGui::Button("Ambient + Specular + Bloom"))
+				{
+					shader->SetUniform("u_LightingMode", 5);
+					bloom = 1;
+				}
+
+				if (bloom == 1 && ImGui::SliderFloat("Bloom Threshold", &threshold, 0.0f, sqrt(3.0f)))
+				{
+					shader->SetUniform("u_Threshold", threshold);
+				}
+
+				if (ImGui::Button("Ambient + Diffuse + Specular + Bloom (not in the midterm outline but I figured it should've been)"))
+				{
+					shader->SetUniform("u_LightingMode", 6);
+					bloom = 2;
+				}
+
+				if (bloom == 2 && ImGui::SliderFloat("Bloom Threshold", &threshold, 0.0f, sqrt(3.0f)))
+				{
+					shader->SetUniform("u_Threshold", threshold);
+				}
 			}
-			ImGui::PlotLines("FPS", fpsBuffer, 128);
-			ImGui::Text("MIN: %f MAX: %f AVG: %f", minFps, maxFps, avgFps / 128.0f);
-			});
+		});
 
 		#pragma endregion 
 
