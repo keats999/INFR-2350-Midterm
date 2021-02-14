@@ -112,16 +112,15 @@ int main() {
 		shader->SetUniform("u_LightAttenuationQuadratic", lightQuadraticFalloff);
 
 		shader->SetUniform("u_Textures", 1);
+		shader->SetUniform("u_Threshold", sqrt(3.0f));
+		shader->SetUniform("u_Intensity", 1.0f);
 
 		PostEffect* basicEffect;
-
+		
 		int activeEffect = 0;
 		std::vector<PostEffect*> effects;
 
-		SepiaEffect* sepiaEffect;
-		GreyscaleEffect* greyscaleEffect;
-		ColorCorrectEffect* colorCorrectEffect;
-		float threshold = 0.9f, bloomIntensity = 1.0f;
+		BloomEffect* bloomEffect;
 		int bloom = 0;
 		bool textures = true;
 
@@ -132,68 +131,98 @@ int main() {
 				if (ImGui::Button("No Lighting"))
 				{
 					shader->SetUniform("u_LightingMode", 0);
+
+					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
+					temp->SetIntensity(0.0f);
 					bloom = 0;
 				}
 				
 				if (ImGui::Button("Ambient Only")) 
 				{
 					shader->SetUniform("u_LightingMode", 1);
+
+					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
+					temp->SetIntensity(0.0f);
 					bloom = 0;
 				}
 
 				if (ImGui::Button("Specular Only"))
 				{
 					shader->SetUniform("u_LightingMode", 2);
+
+					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
+					temp->SetIntensity(0.0f);
 					bloom = 0;
 				}
 
 				if (ImGui::Button("Ambient + Specular"))
 				{
 					shader->SetUniform("u_LightingMode", 3);
+
+					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
+					temp->SetIntensity(0.0f);
 					bloom = 0;
 				}
 
 				if (ImGui::Button("Ambient + Diffuse + Specular (not in the midterm outline but I figured it should've been)"))
 				{
 					shader->SetUniform("u_LightingMode", 4);
+
+					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
+					temp->SetIntensity(0.0f);
 					bloom = 0;
 				}
 
 				if (ImGui::Button("Ambient + Specular + Bloom"))
 				{
-					shader->SetUniform("u_LightingMode", 5);
-					threshold = 0.5f;
-					bloomIntensity = 1.0f;
-					shader->SetUniform("u_Threshold", threshold);
-					shader->SetUniform("u_Intensity", bloomIntensity);
+					shader->SetUniform("u_LightingMode", 3);
+
+					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
+					temp->SetIntensity(1.0f);
+					temp->SetThreshold(0.5f);
 					bloom = 1;
 				}
-				if (bloom == 1 && ImGui::SliderFloat("Bloom Threshold", &threshold, 0.0f, sqrt(3.0f)))
+				if (bloom == 1)
 				{
-					shader->SetUniform("u_Threshold", threshold);
-				}
-				if (bloom == 1 && ImGui::SliderFloat("Bloom Intensity", &bloomIntensity, 0.0f, 1.0f))
-				{
-					shader->SetUniform("u_Intensity", bloomIntensity);
-				}
+					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
+					float intensity = temp->GetIntensity();
+					float threshold = temp->GetThreshold();
 
+					if (ImGui::SliderFloat("Threshold", &threshold, 0.0f, sqrt(3.0f)))
+					{
+						temp->SetThreshold(threshold);
+					}
+					if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 1.0f))
+					{
+						temp->SetIntensity(intensity);
+					}
+				}
+				
 				if (ImGui::Button("Ambient + Diffuse + Specular + Bloom (not in the midterm outline but I figured it should've been)"))
 				{
-					shader->SetUniform("u_LightingMode", 6);
-					threshold = 0.5f;
-					bloomIntensity = 1.0f;
-					shader->SetUniform("u_Threshold", threshold);
-					shader->SetUniform("u_Intensity", bloomIntensity);
+					shader->SetUniform("u_LightingMode", 4);
+
+					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
+					temp->SetIntensity(1.0f);
+					temp->SetThreshold(0.5f);
 					bloom = 2;
 				}
-				if (bloom == 2 && ImGui::SliderFloat("Bloom Threshold", &threshold, 0.0f, sqrt(3.0f)))
+				if (bloom == 2)
 				{
-					shader->SetUniform("u_Threshold", threshold);
+					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
+					float intensity = temp->GetIntensity();
+					float threshold = temp->GetThreshold();
+
+					if (ImGui::SliderFloat("Threshold", &threshold, 0.0f, sqrt(3.0f)))
+					{
+						temp->SetThreshold(threshold);
+					}
+					if (ImGui::SliderFloat("Intensity", &intensity, 0.0f, 1.0f))
+					{
+						temp->SetIntensity(intensity);
+					}
 				}
-				if (bloom == 2 && ImGui::SliderFloat("Bloom Intensity", &bloomIntensity, 0.0f, 1.0f))
-				{
-					shader->SetUniform("u_Intensity", bloomIntensity);
-				}
+
 				if (ImGui::Button("Toggle Textures"))
 				{
 					textures = !textures;
@@ -207,10 +236,10 @@ int main() {
 		// GL states
 		glEnable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
-		glDepthFunc(GL_LEQUAL); // New 
+		glDepthFunc(GL_LEQUAL); // New
 
 		#pragma region TEXTURE LOADING
-
+		
 		// Load some textures from files
 		Texture2D::sptr kingMonkeyTex = Texture2D::LoadFromFile("images/KingMonkeyTex.png");
 		Texture2D::sptr grass = Texture2D::LoadFromFile("images/grass.jpg");
@@ -324,12 +353,12 @@ int main() {
 			basicEffect->Init(width, height);
 		}
 
-		GameObject sepiaEffectObject = scene->CreateEntity("Sepia Effect");
+		GameObject bloomEffectObject = scene->CreateEntity("Bloom Effect");
 		{
-			sepiaEffect = &sepiaEffectObject.emplace<SepiaEffect>();
-			sepiaEffect->Init(width, height);
+			bloomEffect = &bloomEffectObject.emplace<BloomEffect>();
+			bloomEffect->Init(width, height);
 		}
-		effects.push_back(sepiaEffect);
+		effects.push_back(bloomEffect);
 
 		#pragma endregion 
 		//////////////////////////////////////////////////////////////////////////////////////////

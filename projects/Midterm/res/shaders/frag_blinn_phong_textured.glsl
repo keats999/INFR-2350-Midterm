@@ -59,6 +59,10 @@ void main() {
 
 	// Get the specular power from the specular map
 	float texSpec = texture(s_Specular, inUV).x;
+	if (u_Textures == 0)
+	{
+		texSpec = 1.0;
+	}
 	float spec = pow(max(dot(N, h), 0.0), u_Shininess); // Shininess coefficient (can be a uniform)
 	vec3 specular = u_SpecularLightStrength * texSpec * spec * u_LightCol; // Can also use a specular color
 
@@ -74,7 +78,7 @@ void main() {
 	}
 	else
 	{
-		result = textureColor.rgb;
+		result = inColor * textureColor.rgb;
 	}
 
 	if (u_LightingMode == 1)
@@ -83,7 +87,7 @@ void main() {
 		result = (
 			(u_AmbientCol * u_AmbientStrength) + // global ambient light
 			(ambient) * attenuation // light factors from our single light
-			) * inColor * result; // Object color
+			) * result; // Object color
 	}
 	if (u_LightingMode == 2)
 	{
@@ -91,7 +95,7 @@ void main() {
 		result = (
 			(u_AmbientCol * u_AmbientStrength) + // global ambient light
 			(specular) * attenuation // light factors from our single light
-			) * inColor * result; // Object color
+			) * result; // Object color
 	}
 	if (u_LightingMode == 3)
 	{
@@ -99,7 +103,7 @@ void main() {
 		result = (
 			(u_AmbientCol * u_AmbientStrength) + // global ambient light
 			(ambient + specular) * attenuation // light factors from our single light
-			) * inColor * result; // Object color
+			) * result; // Object color
 	}
 	if (u_LightingMode == 4)
 	{
@@ -107,33 +111,7 @@ void main() {
 		result = (
 			(u_AmbientCol * u_AmbientStrength) + // global ambient light
 			(ambient + diffuse + specular) * attenuation // light factors from our single light
-			) * inColor * result; // Object color
-	}
-	if (u_LightingMode == 5)
-	{
-		// Ambient + Specular + Bloom
-		result = (
-			(u_AmbientCol * u_AmbientStrength) + // global ambient light
-			(ambient + specular) * attenuation // light factors from our single light
-			) * inColor * result; // Object color
-
-		if (length((u_AmbientCol * u_AmbientStrength) + (ambient + specular) * attenuation) > u_Threshold)
-		{
-			result = mix(result, vec3(1.0, 1.0, 1.0), u_Intensity);
-		}
-	}
-	if (u_LightingMode == 6)
-	{
-		// Ambient + Diffuse + Specular + Bloom
-		result = (
-			(u_AmbientCol * u_AmbientStrength) + // global ambient light
-			(ambient + diffuse + specular) * attenuation // light factors from our single light
-			) * inColor * result; // Object color
-
-		if (length((u_AmbientCol * u_AmbientStrength) + (ambient + diffuse + specular) * attenuation) > u_Threshold)
-		{
-			result = mix(result, vec3(1.0, 1.0, 1.0), u_Intensity);
-		}
+			) * result; // Object color
 	}
 
 	frag_color = vec4(result, textureColor.a);
