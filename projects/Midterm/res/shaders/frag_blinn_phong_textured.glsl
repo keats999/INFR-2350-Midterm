@@ -30,6 +30,7 @@ uniform vec3  u_CamPos;
 uniform int u_LightingMode;
 uniform float u_Threshold;
 uniform float u_Intensity;
+uniform int u_Textures;
 
 out vec4 frag_color;
 
@@ -66,14 +67,23 @@ void main() {
 	vec4 textureColor2 = texture(s_Diffuse2, inUV);
 	vec4 textureColor = mix(textureColor1, textureColor2, u_TextureMix);
 
-	vec3 result = textureColor.rgb;
+	vec3 result;
+	if (u_Textures == 0)
+	{
+		result = vec3(1.0, 1.0, 1.0);
+	}
+	else
+	{
+		result = textureColor.rgb;
+	}
+
 	if (u_LightingMode == 1)
 	{
 		// Ambient
 		result = (
 			(u_AmbientCol * u_AmbientStrength) + // global ambient light
 			(ambient) * attenuation // light factors from our single light
-			) * inColor * textureColor.rgb; // Object color
+			) * inColor * result; // Object color
 	}
 	if (u_LightingMode == 2)
 	{
@@ -81,7 +91,7 @@ void main() {
 		result = (
 			(u_AmbientCol * u_AmbientStrength) + // global ambient light
 			(specular) * attenuation // light factors from our single light
-			) * inColor * textureColor.rgb; // Object color
+			) * inColor * result; // Object color
 	}
 	if (u_LightingMode == 3)
 	{
@@ -89,7 +99,7 @@ void main() {
 		result = (
 			(u_AmbientCol * u_AmbientStrength) + // global ambient light
 			(ambient + specular) * attenuation // light factors from our single light
-			) * inColor * textureColor.rgb; // Object color
+			) * inColor * result; // Object color
 	}
 	if (u_LightingMode == 4)
 	{
@@ -97,7 +107,7 @@ void main() {
 		result = (
 			(u_AmbientCol * u_AmbientStrength) + // global ambient light
 			(ambient + diffuse + specular) * attenuation // light factors from our single light
-			) * inColor * textureColor.rgb; // Object color
+			) * inColor * result; // Object color
 	}
 	if (u_LightingMode == 5)
 	{
@@ -105,11 +115,11 @@ void main() {
 		result = (
 			(u_AmbientCol * u_AmbientStrength) + // global ambient light
 			(ambient + specular) * attenuation // light factors from our single light
-			) * inColor * textureColor.rgb; // Object color
+			) * inColor * result; // Object color
 
 		if (length((u_AmbientCol * u_AmbientStrength) + (ambient + specular) * attenuation) > u_Threshold)
 		{
-			result = mix(result, textureColor.rgb, u_Intensity);
+			result = mix(result, vec3(1.0, 1.0, 1.0), u_Intensity);
 		}
 	}
 	if (u_LightingMode == 6)
@@ -118,11 +128,11 @@ void main() {
 		result = (
 			(u_AmbientCol * u_AmbientStrength) + // global ambient light
 			(ambient + diffuse + specular) * attenuation // light factors from our single light
-			) * inColor * textureColor.rgb; // Object color
+			) * inColor * result; // Object color
 
 		if (length((u_AmbientCol * u_AmbientStrength) + (ambient + diffuse + specular) * attenuation) > u_Threshold)
 		{
-			result = mix(result, textureColor.rgb, u_Intensity);
+			result = mix(result, vec3(1.0, 1.0, 1.0), u_Intensity);
 		}
 	}
 

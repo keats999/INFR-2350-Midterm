@@ -26,6 +26,40 @@
 #include <FollowPathBehaviour.h>
 #include <SimpleMoveBehaviour.h>
 
+glm::vec3 GenerateRandomPos(std::vector<GameObject> avoidCrowd)
+{
+	float x = (float(rand() % 1800) / 100.0f)* ((rand() % 2) ? 1.0f : -1.0f), y = (float(rand() % 1800) / 100.0f) * ((rand() % 2) ? 1.0f : -1.0f);
+	bool clipping = false;
+	int currentModel = 0;
+
+	do
+	{
+		clipping = false;
+		for (int i = currentModel; i < avoidCrowd.size() - 1; i++)
+		{
+			glm::vec3 avoidArea = avoidCrowd[i].get<Transform>().GetLocalPosition();
+			if (x >= avoidArea.x - 2.0f && x <= avoidArea.x + 2.0f && y >= avoidArea.y - 2.0f && y <= avoidArea.y + 2.0f)
+			{
+				x = (float(rand() % 1800) / 100.0f) * ((rand() % 2) ? 1.0f : -1.0f);
+				y = (float(rand() % 1800) / 100.0f) * ((rand() % 2) ? 1.0f : -1.0f);
+				clipping = true;
+			}
+			if (x <= 5.0f && x >= -5.0f && y <= 5.0f && y >= -5.0f)
+			{
+				x = (float(rand() % 1800) / 100.0f) * ((rand() % 2) ? 1.0f : -1.0f);
+				y = (float(rand() % 1800) / 100.0f) * ((rand() % 2) ? 1.0f : -1.0f);
+				clipping = true;
+			}
+			if (clipping)
+				break;
+
+			currentModel = i + 1;
+		}
+	} while (clipping);
+
+	return glm::vec3(x, y, 1.0f);
+}
+
 int main() {
 	int frameIx = 0;
 	float fpsBuffer[128];
@@ -56,7 +90,7 @@ int main() {
 		shader->LoadShaderPartFromFile("shaders/frag_blinn_phong_textured.glsl", GL_FRAGMENT_SHADER);
 		shader->Link();
 
-		glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, 5.0f);
+		glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, 10.0f);
 		glm::vec3 lightCol = glm::vec3(0.9f, 0.85f, 0.5f);
 		float     lightAmbientPow = 0.05f;
 		float     lightSpecularPow = 1.0f;
@@ -77,6 +111,8 @@ int main() {
 		shader->SetUniform("u_LightAttenuationLinear", lightLinearFalloff);
 		shader->SetUniform("u_LightAttenuationQuadratic", lightQuadraticFalloff);
 
+		shader->SetUniform("u_Textures", 1);
+
 		PostEffect* basicEffect;
 
 		int activeEffect = 0;
@@ -87,6 +123,7 @@ int main() {
 		ColorCorrectEffect* colorCorrectEffect;
 		float threshold = 0.9f, bloomIntensity = 1.0f;
 		int bloom = 0;
+		bool textures = true;
 
 		// We'll add some ImGui controls to control our shader
 		BackendHandler::imGuiCallbacks.push_back([&]() {
@@ -125,7 +162,7 @@ int main() {
 				if (ImGui::Button("Ambient + Specular + Bloom"))
 				{
 					shader->SetUniform("u_LightingMode", 5);
-					threshold = 0.9f;
+					threshold = 0.5f;
 					bloomIntensity = 1.0f;
 					shader->SetUniform("u_Threshold", threshold);
 					shader->SetUniform("u_Intensity", bloomIntensity);
@@ -143,7 +180,7 @@ int main() {
 				if (ImGui::Button("Ambient + Diffuse + Specular + Bloom (not in the midterm outline but I figured it should've been)"))
 				{
 					shader->SetUniform("u_LightingMode", 6);
-					threshold = 0.9f;
+					threshold = 0.5f;
 					bloomIntensity = 1.0f;
 					shader->SetUniform("u_Threshold", threshold);
 					shader->SetUniform("u_Intensity", bloomIntensity);
@@ -156,6 +193,11 @@ int main() {
 				if (bloom == 2 && ImGui::SliderFloat("Bloom Intensity", &bloomIntensity, 0.0f, 1.0f))
 				{
 					shader->SetUniform("u_Intensity", bloomIntensity);
+				}
+				if (ImGui::Button("Toggle Textures"))
+				{
+					textures = !textures;
+					shader->SetUniform("u_Textures", (int)textures);
 				}
 			}
 		});
@@ -170,14 +212,10 @@ int main() {
 		#pragma region TEXTURE LOADING
 
 		// Load some textures from files
-		Texture2D::sptr stone = Texture2D::LoadFromFile("images/Stone_001_Diffuse.png");
-		Texture2D::sptr stoneSpec = Texture2D::LoadFromFile("images/Stone_001_Specular.png");
+		Texture2D::sptr kingMonkeyTex = Texture2D::LoadFromFile("images/KingMonkeyTex.png");
 		Texture2D::sptr grass = Texture2D::LoadFromFile("images/grass.jpg");
 		Texture2D::sptr noSpec = Texture2D::LoadFromFile("images/grassSpec.png");
-		Texture2D::sptr box = Texture2D::LoadFromFile("images/box.bmp");
-		Texture2D::sptr boxSpec = Texture2D::LoadFromFile("images/box-reflections.bmp");
-		Texture2D::sptr simpleFlora = Texture2D::LoadFromFile("images/SimpleFlora.png");
-		LUT3D testCube("cubes/BrightenedCorrection.cube");
+		Texture2D::sptr monkeyTex = Texture2D::LoadFromFile("images/MonkeyTex.png");
 
 		// Load the cube map
 		//TextureCubeMap::sptr environmentMap = TextureCubeMap::LoadFromImages("images/cubemaps/skybox/sample.jpg");
@@ -211,12 +249,12 @@ int main() {
 			scene->Registry().group<RendererComponent>(entt::get_t<Transform>());
 
 		// Create a material and set some properties for it
-		ShaderMaterial::sptr stoneMat = ShaderMaterial::Create();  
-		stoneMat->Shader = shader;
-		stoneMat->Set("s_Diffuse", stone);
-		stoneMat->Set("s_Specular", stoneSpec);
-		stoneMat->Set("u_Shininess", 2.0f);
-		stoneMat->Set("u_TextureMix", 0.0f); 
+		ShaderMaterial::sptr bigMonkeyMat = ShaderMaterial::Create();
+		bigMonkeyMat->Shader = shader;
+		bigMonkeyMat->Set("s_Diffuse", kingMonkeyTex);
+		bigMonkeyMat->Set("s_Specular", kingMonkeyTex);
+		bigMonkeyMat->Set("u_Shininess", 2.0f);
+		bigMonkeyMat->Set("u_TextureMix", 0.0f);
 
 		ShaderMaterial::sptr grassMat = ShaderMaterial::Create();
 		grassMat->Shader = shader;
@@ -225,52 +263,42 @@ int main() {
 		grassMat->Set("u_Shininess", 2.0f);
 		grassMat->Set("u_TextureMix", 0.0f);
 
-		ShaderMaterial::sptr boxMat = ShaderMaterial::Create();
-		boxMat->Shader = shader;
-		boxMat->Set("s_Diffuse", box);
-		boxMat->Set("s_Specular", boxSpec);
-		boxMat->Set("u_Shininess", 8.0f);
-		boxMat->Set("u_TextureMix", 0.0f);
+		ShaderMaterial::sptr monkeyMat = ShaderMaterial::Create();
+		monkeyMat->Shader = shader;
+		monkeyMat->Set("s_Diffuse", monkeyTex);
+		monkeyMat->Set("s_Specular", monkeyTex);
+		monkeyMat->Set("u_Shininess", 8.0f);
+		monkeyMat->Set("u_TextureMix", 0.0f);
 
-		ShaderMaterial::sptr simpleFloraMat = ShaderMaterial::Create();
-		simpleFloraMat->Shader = shader;
-		simpleFloraMat->Set("s_Diffuse", simpleFlora);
-		simpleFloraMat->Set("s_Specular", noSpec);
-		simpleFloraMat->Set("u_Shininess", 8.0f);
-		simpleFloraMat->Set("u_TextureMix", 0.0f);
-
-		GameObject obj1 = scene->CreateEntity("Ground"); 
+		GameObject obj1 = scene->CreateEntity("Ground");
 		{
 			VertexArrayObject::sptr vao = ObjLoader::LoadFromFile("models/plane.obj");
 			obj1.emplace<RendererComponent>().SetMesh(vao).SetMaterial(grassMat);
 		}
 
-		GameObject obj2 = scene->CreateEntity("monkey_quads");
+		GameObject obj2 = scene->CreateEntity("KingMonkey");
 		{
-			VertexArrayObject::sptr vao = ObjLoader::LoadFromFile("models/monkey_quads.obj");
-			obj2.emplace<RendererComponent>().SetMesh(vao).SetMaterial(stoneMat);
-			obj2.get<Transform>().SetLocalPosition(0.0f, 0.0f, 2.0f);
-			obj2.get<Transform>().SetLocalRotation(0.0f, 0.0f, -90.0f);
+			VertexArrayObject::sptr vao = ObjLoader::LoadFromFile("models/kingMonkey.obj");
+			obj2.emplace<RendererComponent>().SetMesh(vao).SetMaterial(bigMonkeyMat);
+			obj2.get<Transform>().SetLocalPosition(0.0f, 0.0f, 6.0f);
+			obj2.get<Transform>().SetLocalRotation(90.0f, 0.0f, 180.0f);
+			obj2.get<Transform>().SetLocalScale(3.0f, 3.0f, 3.0f);
 			BehaviourBinding::BindDisabled<SimpleMoveBehaviour>(obj2);
 		}
 
-		std::vector<glm::vec2> allAvoidAreasFrom = { glm::vec2(-4.0f, -4.0f) };
-		std::vector<glm::vec2> allAvoidAreasTo = { glm::vec2(4.0f, 4.0f) };
-
-		std::vector<glm::vec2> rockAvoidAreasFrom = { glm::vec2(-3.0f, -3.0f), glm::vec2(-19.0f, -19.0f), glm::vec2(5.0f, -19.0f),
-														glm::vec2(-19.0f, 5.0f), glm::vec2(-19.0f, -19.0f) };
-		std::vector<glm::vec2> rockAvoidAreasTo = { glm::vec2(3.0f, 3.0f), glm::vec2(19.0f, -5.0f), glm::vec2(19.0f, 19.0f),
-														glm::vec2(19.0f, 19.0f), glm::vec2(-5.0f, 19.0f) };
-		glm::vec2 spawnFromHere = glm::vec2(-19.0f, -19.0f);
-		glm::vec2 spawnToHere = glm::vec2(19.0f, 19.0f);
-
-		EnvironmentGenerator::AddObjectToGeneration("models/simplePine.obj", simpleFloraMat, 150,
-			spawnFromHere, spawnToHere, allAvoidAreasFrom, allAvoidAreasTo);
-		EnvironmentGenerator::AddObjectToGeneration("models/simpleTree.obj", simpleFloraMat, 150,
-			spawnFromHere, spawnToHere, allAvoidAreasFrom, allAvoidAreasTo);
-		EnvironmentGenerator::AddObjectToGeneration("models/simpleRock.obj", simpleFloraMat, 40,
-			spawnFromHere, spawnToHere, rockAvoidAreasFrom, rockAvoidAreasTo);
-		EnvironmentGenerator::GenerateEnvironment();
+		srand(glfwGetTime());
+		std::vector<GameObject> monkeyCrowd;
+		{
+			VertexArrayObject::sptr vao = ObjLoader::LoadFromFile("models/monkey.obj");
+			for (int i = 0; i < 100; i++)
+			{
+				monkeyCrowd.push_back(scene->CreateEntity("monkey" + (std::to_string(i + 1))));
+				monkeyCrowd[i].emplace<RendererComponent>().SetMesh(vao).SetMaterial(monkeyMat);
+				//Randomly places
+				monkeyCrowd[i].get<Transform>().SetLocalPosition(GenerateRandomPos(monkeyCrowd));
+				monkeyCrowd[i].get<Transform>().LookAt(glm::vec3(0.0f, 0.0f, 6.0f));
+			}
+		}
 
 		// Create an object to be our camera
 		GameObject cameraObject = scene->CreateEntity("Camera");
@@ -302,20 +330,6 @@ int main() {
 			sepiaEffect->Init(width, height);
 		}
 		effects.push_back(sepiaEffect);
-
-		GameObject greyscaleEffectObject = scene->CreateEntity("Greyscale Effect");
-		{
-			greyscaleEffect = &greyscaleEffectObject.emplace<GreyscaleEffect>();
-			greyscaleEffect->Init(width, height);
-		}
-		effects.push_back(greyscaleEffect);
-		
-		GameObject colorCorrectEffectObject = scene->CreateEntity("Greyscale Effect");
-		{
-			colorCorrectEffect = &colorCorrectEffectObject.emplace<ColorCorrectEffect>();
-			colorCorrectEffect->Init(width, height);
-		}
-		effects.push_back(colorCorrectEffect);
 
 		#pragma endregion 
 		//////////////////////////////////////////////////////////////////////////////////////////
@@ -391,6 +405,8 @@ int main() {
 			time.DeltaTime = static_cast<float>(time.CurrentFrame - time.LastFrame);
 
 			time.DeltaTime = time.DeltaTime > 1.0f ? 1.0f : time.DeltaTime;
+
+			obj2.get<Transform>().SetLocalRotation(obj2.get<Transform>().GetLocalRotation() + glm::vec3(0.0f, 0.0f, time.DeltaTime * 30.0f));
 
 			// Update our FPS tracker data
 			fpsBuffer[frameIx] = 1.0f / time.DeltaTime;
