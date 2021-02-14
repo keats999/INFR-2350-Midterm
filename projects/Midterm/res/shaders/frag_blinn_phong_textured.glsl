@@ -29,6 +29,7 @@ uniform vec3  u_CamPos;
 
 uniform int u_LightingMode;
 uniform float u_Threshold;
+uniform float u_Intensity;
 
 out vec4 frag_color;
 
@@ -108,7 +109,7 @@ void main() {
 
 		if (length((u_AmbientCol * u_AmbientStrength) + (ambient + specular) * attenuation) > u_Threshold)
 		{
-			result = textureColor.rgb;
+			result = mix(result, textureColor.rgb, u_Intensity);
 		}
 	}
 	if (u_LightingMode == 6)
@@ -116,12 +117,12 @@ void main() {
 		// Ambient + Diffuse + Specular + Bloom
 		result = (
 			(u_AmbientCol * u_AmbientStrength) + // global ambient light
-			(ambient + specular) * attenuation // light factors from our single light
+			(ambient + diffuse + specular) * attenuation // light factors from our single light
 			) * inColor * textureColor.rgb; // Object color
 
 		if (length((u_AmbientCol * u_AmbientStrength) + (ambient + diffuse + specular) * attenuation) > u_Threshold)
 		{
-			result = textureColor.rgb;
+			result = mix(result, textureColor.rgb, u_Intensity);
 		}
 	}
 
