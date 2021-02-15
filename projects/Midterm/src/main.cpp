@@ -26,38 +26,22 @@
 #include <FollowPathBehaviour.h>
 #include <SimpleMoveBehaviour.h>
 
-glm::vec3 GenerateRandomPos(std::vector<GameObject> avoidCrowd)
+glm::vec3 GenerateRandomPos()
 {
-	float x = (float(rand() % 1800) / 100.0f)* ((rand() % 2) ? 1.0f : -1.0f), y = (float(rand() % 1800) / 100.0f) * ((rand() % 2) ? 1.0f : -1.0f);
-	bool clipping = false;
-	int currentModel = 0;
+	//0.4f at 10.0f, 3.1f at 2.0f
+	float x = 0.0f, y = 0.0f, z = 0.0f;
+	z = float(rand() % 800) / 100.0f + 2.0f;
 
-	do
-	{
-		clipping = false;
-		for (int i = currentModel; i < avoidCrowd.size() - 1; i++)
-		{
-			glm::vec3 avoidArea = avoidCrowd[i].get<Transform>().GetLocalPosition();
-			if (x >= avoidArea.x - 2.0f && x <= avoidArea.x + 2.0f && y >= avoidArea.y - 2.0f && y <= avoidArea.y + 2.0f)
-			{
-				x = (float(rand() % 1800) / 100.0f) * ((rand() % 2) ? 1.0f : -1.0f);
-				y = (float(rand() % 1800) / 100.0f) * ((rand() % 2) ? 1.0f : -1.0f);
-				clipping = true;
-			}
-			if (x <= 5.0f && x >= -5.0f && y <= 5.0f && y >= -5.0f)
-			{
-				x = (float(rand() % 1800) / 100.0f) * ((rand() % 2) ? 1.0f : -1.0f);
-				y = (float(rand() % 1800) / 100.0f) * ((rand() % 2) ? 1.0f : -1.0f);
-				clipping = true;
-			}
-			if (clipping)
-				break;
+	float distFromCenter = -(2.7f / 10.0f) * z + 2.775f;
+	float angle = float(rand() % 91);
 
-			currentModel = i + 1;
-		}
-	} while (clipping);
+	x = acos(glm::radians(angle)) * distFromCenter;
+	y = asin(glm::radians(angle)) * distFromCenter;
 
-	return glm::vec3(x, y, 1.0f);
+	x *= (rand() % 2) ? 1.0f : -1.0f;
+	y *= (rand() % 2) ? 1.0f : -1.0f;
+
+	return glm::vec3(x, y, z);
 }
 
 int main() {
@@ -90,8 +74,8 @@ int main() {
 		shader->LoadShaderPartFromFile("shaders/frag_blinn_phong_textured.glsl", GL_FRAGMENT_SHADER);
 		shader->Link();
 
-		glm::vec3 lightPos = glm::vec3(0.0f, 0.0f, 10.0f);
-		glm::vec3 lightCol = glm::vec3(0.9f, 0.85f, 0.5f);
+		glm::vec3 lightPos = glm::vec3(5.0f, 5.0f, 10.0f);
+		glm::vec3 lightCol = glm::vec3(1.0f, 1.0f, 1.0f);
 		float     lightAmbientPow = 0.05f;
 		float     lightSpecularPow = 1.0f;
 		glm::vec3 ambientCol = glm::vec3(1.0f);
@@ -121,8 +105,7 @@ int main() {
 		std::vector<PostEffect*> effects;
 
 		BloomEffect* bloomEffect;
-		int bloom = 0;
-		bool textures = true;
+		bool bloom = false, textures = true;
 
 		// We'll add some ImGui controls to control our shader
 		BackendHandler::imGuiCallbacks.push_back([&]() {
@@ -134,7 +117,7 @@ int main() {
 
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					temp->SetIntensity(0.0f);
-					bloom = 0;
+					bloom = false;
 				}
 				
 				if (ImGui::Button("Ambient Only")) 
@@ -143,7 +126,7 @@ int main() {
 
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					temp->SetIntensity(0.0f);
-					bloom = 0;
+					bloom = false;
 				}
 
 				if (ImGui::Button("Specular Only"))
@@ -152,7 +135,7 @@ int main() {
 
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					temp->SetIntensity(0.0f);
-					bloom = 0;
+					bloom = false;
 				}
 
 				if (ImGui::Button("Ambient + Specular"))
@@ -161,7 +144,7 @@ int main() {
 
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					temp->SetIntensity(0.0f);
-					bloom = 0;
+					bloom = false;
 				}
 
 				if (ImGui::Button("Ambient + Diffuse + Specular (not in the midterm outline but I figured it should've been)"))
@@ -170,7 +153,7 @@ int main() {
 
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					temp->SetIntensity(0.0f);
-					bloom = 0;
+					bloom = false;
 				}
 
 				if (ImGui::Button("Ambient + Specular + Bloom"))
@@ -180,9 +163,9 @@ int main() {
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					temp->SetIntensity(1.0f);
 					temp->SetThreshold(0.5f);
-					bloom = 1;
+					bloom = true;
 				}
-				if (bloom == 1)
+				if (bloom)
 				{
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					float intensity = temp->GetIntensity();
@@ -205,9 +188,9 @@ int main() {
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					temp->SetIntensity(1.0f);
 					temp->SetThreshold(0.5f);
-					bloom = 2;
+					bloom = true;
 				}
-				if (bloom == 2)
+				if (bloom)
 				{
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					float intensity = temp->GetIntensity();
@@ -241,7 +224,7 @@ int main() {
 		#pragma region TEXTURE LOADING
 		
 		// Load some textures from files
-		Texture2D::sptr kingMonkeyTex = Texture2D::LoadFromFile("images/KingMonkeyTex.png");
+		Texture2D::sptr treeTex = Texture2D::LoadFromFile("images/SimpleFlora.png");
 		Texture2D::sptr grass = Texture2D::LoadFromFile("images/grass.jpg");
 		Texture2D::sptr noSpec = Texture2D::LoadFromFile("images/grassSpec.png");
 		Texture2D::sptr monkeyTex = Texture2D::LoadFromFile("images/MonkeyTex.png");
@@ -278,17 +261,17 @@ int main() {
 			scene->Registry().group<RendererComponent>(entt::get_t<Transform>());
 
 		// Create a material and set some properties for it
-		ShaderMaterial::sptr bigMonkeyMat = ShaderMaterial::Create();
-		bigMonkeyMat->Shader = shader;
-		bigMonkeyMat->Set("s_Diffuse", kingMonkeyTex);
-		bigMonkeyMat->Set("s_Specular", kingMonkeyTex);
-		bigMonkeyMat->Set("u_Shininess", 2.0f);
-		bigMonkeyMat->Set("u_TextureMix", 0.0f);
+		ShaderMaterial::sptr treeMat = ShaderMaterial::Create();
+		treeMat->Shader = shader;
+		treeMat->Set("s_Diffuse", treeTex);
+		treeMat->Set("s_Specular", treeTex);
+		treeMat->Set("u_Shininess", 2.0f);
+		treeMat->Set("u_TextureMix", 0.0f);
 
 		ShaderMaterial::sptr grassMat = ShaderMaterial::Create();
 		grassMat->Shader = shader;
 		grassMat->Set("s_Diffuse", grass);
-		grassMat->Set("s_Specular", noSpec);
+		grassMat->Set("s_Specular", grass);
 		grassMat->Set("u_Shininess", 2.0f);
 		grassMat->Set("u_TextureMix", 0.0f);
 
@@ -305,13 +288,11 @@ int main() {
 			obj1.emplace<RendererComponent>().SetMesh(vao).SetMaterial(grassMat);
 		}
 
-		GameObject obj2 = scene->CreateEntity("KingMonkey");
+		GameObject obj2 = scene->CreateEntity("MonkeyTree");
 		{
-			VertexArrayObject::sptr vao = ObjLoader::LoadFromFile("models/kingMonkey.obj");
-			obj2.emplace<RendererComponent>().SetMesh(vao).SetMaterial(bigMonkeyMat);
-			obj2.get<Transform>().SetLocalPosition(0.0f, 0.0f, 6.0f);
-			obj2.get<Transform>().SetLocalRotation(90.0f, 0.0f, 180.0f);
-			obj2.get<Transform>().SetLocalScale(3.0f, 3.0f, 3.0f);
+			VertexArrayObject::sptr vao = ObjLoader::LoadFromFile("models/simplePine.obj");
+			obj2.emplace<RendererComponent>().SetMesh(vao).SetMaterial(treeMat);
+			obj2.get<Transform>().SetLocalScale(2.0f, 2.0f, 2.0f);
 			BehaviourBinding::BindDisabled<SimpleMoveBehaviour>(obj2);
 		}
 
@@ -323,9 +304,10 @@ int main() {
 			{
 				monkeyCrowd.push_back(scene->CreateEntity("monkey" + (std::to_string(i + 1))));
 				monkeyCrowd[i].emplace<RendererComponent>().SetMesh(vao).SetMaterial(monkeyMat);
-				//Randomly places
-				monkeyCrowd[i].get<Transform>().SetLocalPosition(GenerateRandomPos(monkeyCrowd));
-				monkeyCrowd[i].get<Transform>().LookAt(glm::vec3(0.0f, 0.0f, 6.0f));
+				//Randomly places on the tree
+				monkeyCrowd[i].get<Transform>().SetLocalScale(0.2f, 0.2f, 0.2f);
+				monkeyCrowd[i].get<Transform>().SetLocalPosition(GenerateRandomPos());
+				monkeyCrowd[i].get<Transform>().LookAt(glm::vec3(0.0f, 0.0f, monkeyCrowd[i].get<Transform>().GetLocalPosition().z));
 			}
 		}
 
@@ -336,7 +318,7 @@ int main() {
 
 			// We'll make our camera a component of the camera object
 			Camera& camera = cameraObject.emplace<Camera>();// Camera::Create();
-			camera.SetPosition(glm::vec3(0, 3, 3));
+			camera.SetPosition(glm::vec3(5, 5, 10));
 			camera.SetUp(glm::vec3(0, 0, 1));
 			camera.LookAt(glm::vec3(0));
 			camera.SetFovDegrees(90.0f); // Set an initial FOV
@@ -434,8 +416,6 @@ int main() {
 			time.DeltaTime = static_cast<float>(time.CurrentFrame - time.LastFrame);
 
 			time.DeltaTime = time.DeltaTime > 1.0f ? 1.0f : time.DeltaTime;
-
-			obj2.get<Transform>().SetLocalRotation(obj2.get<Transform>().GetLocalRotation() + glm::vec3(0.0f, 0.0f, time.DeltaTime * 30.0f));
 
 			// Update our FPS tracker data
 			fpsBuffer[frameIx] = 1.0f / time.DeltaTime;
