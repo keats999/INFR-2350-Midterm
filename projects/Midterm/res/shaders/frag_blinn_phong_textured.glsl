@@ -28,8 +28,6 @@ uniform float u_TextureMix;
 uniform vec3  u_CamPos;
 
 uniform int u_LightingMode;
-uniform float u_Threshold;
-uniform float u_Intensity;
 uniform int u_Textures;
 
 out vec4 frag_color;

@@ -105,7 +105,8 @@ int main() {
 		std::vector<PostEffect*> effects;
 
 		BloomEffect* bloomEffect;
-		bool bloom = false, textures = true;
+		int bloom = 0;
+		bool textures = true;
 
 		// We'll add some ImGui controls to control our shader
 		BackendHandler::imGuiCallbacks.push_back([&]() {
@@ -117,7 +118,7 @@ int main() {
 
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					temp->SetIntensity(0.0f);
-					bloom = false;
+					bloom = 0;
 				}
 				
 				if (ImGui::Button("Ambient Only")) 
@@ -126,7 +127,7 @@ int main() {
 
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					temp->SetIntensity(0.0f);
-					bloom = false;
+					bloom = 0;
 				}
 
 				if (ImGui::Button("Specular Only"))
@@ -135,7 +136,7 @@ int main() {
 
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					temp->SetIntensity(0.0f);
-					bloom = false;
+					bloom = 0;
 				}
 
 				if (ImGui::Button("Ambient + Specular"))
@@ -144,7 +145,7 @@ int main() {
 
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					temp->SetIntensity(0.0f);
-					bloom = false;
+					bloom = 0;
 				}
 
 				if (ImGui::Button("Ambient + Diffuse + Specular (not in the midterm outline but I figured it should've been)"))
@@ -153,7 +154,7 @@ int main() {
 
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					temp->SetIntensity(0.0f);
-					bloom = false;
+					bloom = 0;
 				}
 
 				if (ImGui::Button("Ambient + Specular + Bloom"))
@@ -163,9 +164,9 @@ int main() {
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					temp->SetIntensity(1.0f);
 					temp->SetThreshold(0.5f);
-					bloom = true;
+					bloom = 1;
 				}
-				if (bloom)
+				if (bloom == 1)
 				{
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					float intensity = temp->GetIntensity();
@@ -188,9 +189,9 @@ int main() {
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					temp->SetIntensity(1.0f);
 					temp->SetThreshold(0.5f);
-					bloom = true;
+					bloom = 2;
 				}
-				if (bloom)
+				if (bloom == 2)
 				{
 					BloomEffect* temp = (BloomEffect*)effects[activeEffect];
 					float intensity = temp->GetIntensity();
